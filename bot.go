@@ -109,18 +109,18 @@ func (b *Bot) SendMessage(recipient Recipient, message string, options *SendOpti
 		return err
 	}
 
-	var responseRecieved struct {
+	var responseReceived struct {
 		Ok          bool
 		Description string
 	}
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	return nil
@@ -139,18 +139,18 @@ func (b *Bot) ForwardMessage(recipient Recipient, message Message) error {
 		return err
 	}
 
-	var responseRecieved struct {
+	var responseReceived struct {
 		Ok          bool
 		Description string
 	}
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	return nil
@@ -187,22 +187,22 @@ func (b *Bot) SendPhoto(recipient Recipient, photo *Photo, options *SendOptions)
 		return err
 	}
 
-	var responseRecieved struct {
+	var responseReceived struct {
 		Ok          bool
 		Result      Message
 		Description string
 	}
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
-	thumbnails := &responseRecieved.Result.Photo
+	thumbnails := &responseReceived.Result.Photo
 	filename := photo.filename
 	photo.File = (*thumbnails)[len(*thumbnails)-1].File
 	photo.filename = filename
@@ -240,23 +240,23 @@ func (b *Bot) SendAudio(recipient Recipient, audio *Audio, options *SendOptions)
 		return err
 	}
 
-	var responseRecieved struct {
+	var responseReceived struct {
 		Ok          bool
 		Result      Message
 		Description string
 	}
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	filename := audio.filename
-	*audio = responseRecieved.Result.Audio
+	*audio = responseReceived.Result.Audio
 	audio.filename = filename
 
 	return nil
@@ -292,23 +292,23 @@ func (b *Bot) SendDocument(recipient Recipient, doc *Document, options *SendOpti
 		return err
 	}
 
-	var responseRecieved struct {
+	var responseReceived struct {
 		Ok          bool
 		Result      Message
 		Description string
 	}
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	filename := doc.filename
-	*doc = responseRecieved.Result.Document
+	*doc = responseReceived.Result.Document
 	doc.filename = filename
 
 	return nil
@@ -344,23 +344,23 @@ func (b *Bot) SendSticker(recipient Recipient, sticker *Sticker, options *SendOp
 		return err
 	}
 
-	var responseRecieved struct {
+	var responseReceived struct {
 		Ok          bool
 		Result      Message
 		Description string
 	}
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	filename := sticker.filename
-	*sticker = responseRecieved.Result.Sticker
+	*sticker = responseReceived.Result.Sticker
 	sticker.filename = filename
 
 	return nil
@@ -396,23 +396,23 @@ func (b *Bot) SendVideo(recipient Recipient, video *Video, options *SendOptions)
 		return err
 	}
 
-	var responseRecieved struct {
+	var responseReceived struct {
 		Ok          bool
 		Result      Message
 		Description string
 	}
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	filename := video.filename
-	*video = responseRecieved.Result.Video
+	*video = responseReceived.Result.Video
 	video.filename = filename
 
 	return nil
@@ -440,19 +440,19 @@ func (b *Bot) SendLocation(recipient Recipient, geo *Location, options *SendOpti
 		return err
 	}
 
-	var responseRecieved struct {
+	var responseReceived struct {
 		Ok          bool
 		Result      Message
 		Description string
 	}
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	return nil
@@ -479,19 +479,19 @@ func (b *Bot) SendVenue(recipient Recipient, venue *Venue, options *SendOptions)
 		return err
 	}
 
-	var responseRecieved struct {
+	var responseReceived struct {
 		Ok          bool
 		Result      Message
 		Description string
 	}
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	return nil
@@ -517,18 +517,18 @@ func (b *Bot) SendChatAction(recipient Recipient, action string) error {
 		return err
 	}
 
-	var responseRecieved struct {
+	var responseReceived struct {
 		Ok          bool
 		Description string
 	}
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	return nil
@@ -552,18 +552,18 @@ func (b *Bot) Respond(query Query, results []Result) error {
 		return err
 	}
 
-	var responseRecieved struct {
+	var responseReceived struct {
 		Ok          bool
 		Description string
 	}
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	return nil
@@ -580,18 +580,18 @@ func (b *Bot) AnswerInlineQuery(query *Query, response *QueryResponse) error {
 		return err
 	}
 
-	var responseRecieved struct {
+	var responseReceived struct {
 		Ok          bool
 		Description string
 	}
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	return nil
@@ -608,22 +608,23 @@ func (b *Bot) AnswerCallbackQuery(callback *Callback, response *CallbackResponse
 		return err
 	}
 
-	var responseRecieved struct {
+	var responseReceived struct {
 		Ok          bool
 		Description string
 	}
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	return nil
 }
+
 
 // Handle registers a handler for a message which text matches the provided regular expression
 func (b *Bot) Handle(command string, handler Handler) {
