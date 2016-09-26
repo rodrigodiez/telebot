@@ -104,13 +104,6 @@ func (b *Bot) poll(
 		}
 	}
 
-	// Insert handling of routing here, instead of Serve
-	for message := range messages {
-		if handler, args := b.route(&message); handler != nil {
-			handler(Context{Message: &message, Args: args})
-		}
-	}
-
 }
 
 // SendMessage sends a text message to recipient.
