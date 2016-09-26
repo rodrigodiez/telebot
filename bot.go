@@ -4,30 +4,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-<<<<<<< HEAD
-=======
 	"net/url"
 	"regexp"
->>>>>>> 2b43b49170b5599961decfdda44f8ae60dc5a0c0
 	"strconv"
 	"time"
 )
 
 // Bot represents a separate Telegram bot instance.
 type Bot struct {
-<<<<<<< HEAD
 	Token     string
 	Identity  User
 	Messages  chan Message
 	Queries   chan Query
 	Callbacks chan Callback
-=======
-	Token          string
-	Identity       User
-	Messages       chan Message
-	Queries        chan Query
 	handlers       map[*regexp.Regexp]Handler
->>>>>>> 2b43b49170b5599961decfdda44f8ae60dc5a0c0
 }
 
 // NewBot does try to build a Bot with token `token`, which
@@ -579,7 +569,6 @@ func (b *Bot) Respond(query Query, results []Result) error {
 	return nil
 }
 
-<<<<<<< HEAD
 // AnswerInlineQuery sends a response for a given inline query. A query can
 // only be responded to once, subsequent attempts to respond to the same query
 // will result in an error.
@@ -634,7 +623,7 @@ func (b *Bot) AnswerCallbackQuery(callback *Callback, response *CallbackResponse
 	}
 
 	return nil
-=======
+
 // Handle registers a handler for a message which text matches the provided regular expression
 func (b *Bot) Handle(command string, handler Handler) {
 	reg := regexp.MustCompile(command)
@@ -669,5 +658,4 @@ func (b *Bot) route(message *Message) (Handler, map[string]string) {
 	}
 
 	return nil, nil
->>>>>>> 2b43b49170b5599961decfdda44f8ae60dc5a0c0
 }
