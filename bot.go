@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/url"
+//	"net/url"
 	"regexp"
 	"strconv"
 	"time"
@@ -114,10 +114,7 @@ func (b *Bot) SendMessage(recipient Recipient, message string, options *SendOpti
 		return err
 	}
 
-	var responseReceived struct {
-		Ok          bool
-		Description string
-	}
+	var responseReceived ResponseReceivedOK
 
 	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
