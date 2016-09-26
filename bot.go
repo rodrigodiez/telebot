@@ -605,13 +605,13 @@ func (b *Bot) Serve() {
 	b.Listen(messages, 1*time.Second)
 
 	for message := range messages {
-		if handler, args := b.route(&message); handler != nil {
+		if handler, args := b.Route(&message); handler != nil {
 			handler(Context{Message: &message, Args: args})
 		}
 	}
 }
 
-func (b *Bot) route(message *Message) (Handler, map[string]string) {
+func (b *Bot) Route(message *Message) (Handler, map[string]string) {
 	for reg, handler := range b.handlers {
 
 		if matches := reg.FindStringSubmatch(message.Text); len(matches) > 0 {
