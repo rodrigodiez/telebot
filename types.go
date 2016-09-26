@@ -223,3 +223,12 @@ type MessageEntity struct {
 	//user	Optional. For “text_mention” only, the mentioned user
 	User User `json:"user",omitempty`
 }
+
+// Context is passed to message handlers
+type Context struct {
+	Message *Message
+	Args    map[string]string
+}
+
+// Handler represents a message handler
+type Handler func(Context)

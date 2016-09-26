@@ -4,17 +4,30 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+<<<<<<< HEAD
+=======
+	"net/url"
+	"regexp"
+>>>>>>> 2b43b49170b5599961decfdda44f8ae60dc5a0c0
 	"strconv"
 	"time"
 )
 
 // Bot represents a separate Telegram bot instance.
 type Bot struct {
+<<<<<<< HEAD
 	Token     string
 	Identity  User
 	Messages  chan Message
 	Queries   chan Query
 	Callbacks chan Callback
+=======
+	Token          string
+	Identity       User
+	Messages       chan Message
+	Queries        chan Query
+	handlers       map[*regexp.Regexp]Handler
+>>>>>>> 2b43b49170b5599961decfdda44f8ae60dc5a0c0
 }
 
 // NewBot does try to build a Bot with token `token`, which
@@ -26,8 +39,9 @@ func NewBot(token string) (*Bot, error) {
 	}
 
 	return &Bot{
-		Token:    token,
-		Identity: user,
+		Token:          token,
+		Identity:       user,
+		handlers:       map[*regexp.Regexp]Handler{},
 	}, nil
 }
 
@@ -565,6 +579,7 @@ func (b *Bot) Respond(query Query, results []Result) error {
 	return nil
 }
 
+<<<<<<< HEAD
 // AnswerInlineQuery sends a response for a given inline query. A query can
 // only be responded to once, subsequent attempts to respond to the same query
 // will result in an error.
@@ -619,4 +634,40 @@ func (b *Bot) AnswerCallbackQuery(callback *Callback, response *CallbackResponse
 	}
 
 	return nil
+=======
+// Handle registers a handler for a message which text matches the provided regular expression
+func (b *Bot) Handle(command string, handler Handler) {
+	reg := regexp.MustCompile(command)
+	b.handlers[reg] = handler
+}
+
+// Serve listens for messages and route them to the appropiate handler
+func (b *Bot) Serve() {
+	messages := make(chan Message)
+	b.Listen(messages, 1*time.Second)
+
+	for message := range messages {
+		if handler, args := b.route(&message); handler != nil {
+			handler(Context{Message: &message, Args: args})
+		}
+	}
+}
+
+func (b *Bot) route(message *Message) (Handler, map[string]string) {
+	for reg, handler := range b.handlers {
+
+		if matches := reg.FindStringSubmatch(message.Text); len(matches) > 0 {
+			args := map[string]string{}
+
+			for x, name := range reg.SubexpNames() {
+				if x != 0 {
+					args[name] = matches[x]
+				}
+			}
+			return handler, args
+		}
+	}
+
+	return nil, nil
+>>>>>>> 2b43b49170b5599961decfdda44f8ae60dc5a0c0
 }
