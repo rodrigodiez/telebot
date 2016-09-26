@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/url"
+//	"net/url"
 	"regexp"
 	"strconv"
 	"time"
@@ -12,11 +12,25 @@ import (
 
 // Bot represents a separate Telegram bot instance.
 type Bot struct {
-	Token          string
-	Identity       User
-	Messages       chan Message
-	Queries        chan Query
+	Token     string
+	Identity  User
+	Messages  chan Message
+	Queries   chan Query
+	Callbacks chan Callback
 	handlers       map[*regexp.Regexp]Handler
+}
+
+// Simple ack response
+type ResponseReceivedOK  struct {
+	Ok          bool
+	Description string
+}
+
+// Response with a payload
+type ResponseReceivedResult struct {
+	Ok          bool
+	Result      Message
+	Description string
 }
 
 // NewBot does try to build a Bot with token `token`, which
@@ -37,18 +51,19 @@ func NewBot(token string) (*Bot, error) {
 // Listen periodically looks for updates and delivers new messages
 // to the subscription channel.
 func (b *Bot) Listen(subscription chan Message, timeout time.Duration) {
-	go b.poll(subscription, nil, timeout)
+	go b.poll(subscription, nil, nil, timeout)
 }
 
 // Start periodically polls messages and/or updates to corresponding channels
 // from the bot object.
 func (b *Bot) Start(timeout time.Duration) {
-	b.poll(b.Messages, b.Queries, timeout)
+	b.poll(b.Messages, b.Queries, b.Callbacks, timeout)
 }
 
 func (b *Bot) poll(
 	messages chan Message,
 	queries chan Query,
+	callbacks chan Callback,
 	timeout time.Duration,
 ) {
 	latestUpdate := 0
@@ -65,18 +80,24 @@ func (b *Bot) poll(
 		}
 
 		for _, update := range updates {
-			if update.Query == nil /* if message */ {
+			if update.Payload != nil /* if message */ {
 				if messages == nil {
 					continue
 				}
 
-				messages <- update.Payload
-			} else /* if query */ {
+				messages <- *update.Payload
+			} else if update.Query != nil /* if query */ {
 				if queries == nil {
 					continue
 				}
 
 				queries <- *update.Query
+			} else if update.Callback != nil {
+				if callbacks == nil {
+					continue
+				}
+
+				callbacks <- *update.Callback
 			}
 
 			latestUpdate = update.ID
@@ -87,12 +108,13 @@ func (b *Bot) poll(
 
 // SendMessage sends a text message to recipient.
 func (b *Bot) SendMessage(recipient Recipient, message string, options *SendOptions) error {
-	params := url.Values{}
-	params.Set("chat_id", recipient.Destination())
-	params.Set("text", message)
+	params := map[string]string{
+		"chat_id": recipient.Destination(),
+		"text":    message,
+	}
 
 	if options != nil {
-		embedSendOptions(&params, options)
+		embedSendOptions(params, options)
 	}
 
 	responseJSON, err := sendCommand("sendMessage", b.Token, params)
@@ -100,18 +122,15 @@ func (b *Bot) SendMessage(recipient Recipient, message string, options *SendOpti
 		return err
 	}
 
-	var responseRecieved struct {
-		Ok          bool
-		Description string
-	}
+	var responseReceived ResponseReceivedOK
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	return nil
@@ -119,28 +138,26 @@ func (b *Bot) SendMessage(recipient Recipient, message string, options *SendOpti
 
 // ForwardMessage forwards a message to recipient.
 func (b *Bot) ForwardMessage(recipient Recipient, message Message) error {
-	params := url.Values{}
-	params.Set("chat_id", recipient.Destination())
-	params.Set("from_chat_id", strconv.Itoa(message.Origin().ID))
-	params.Set("message_id", strconv.Itoa(message.ID))
+	params := map[string]string{
+		"chat_id":      recipient.Destination(),
+		"from_chat_id": strconv.Itoa(message.Origin().ID),
+		"message_id":   strconv.Itoa(message.ID),
+	}
 
 	responseJSON, err := sendCommand("forwardMessage", b.Token, params)
 	if err != nil {
 		return err
 	}
 
-	var responseRecieved struct {
-		Ok          bool
-		Description string
-	}
+	var responseReceived ResponseReceivedOK
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	return nil
@@ -153,19 +170,20 @@ func (b *Bot) ForwardMessage(recipient Recipient, message Message) error {
 // again, won't issue a new upload, but would make a use
 // of existing file on Telegram servers.
 func (b *Bot) SendPhoto(recipient Recipient, photo *Photo, options *SendOptions) error {
-	params := url.Values{}
-	params.Set("chat_id", recipient.Destination())
-	params.Set("caption", photo.Caption)
+	params := map[string]string{
+		"chat_id": recipient.Destination(),
+		"caption": photo.Caption,
+	}
 
 	if options != nil {
-		embedSendOptions(&params, options)
+		embedSendOptions(params, options)
 	}
 
 	var responseJSON []byte
 	var err error
 
 	if photo.Exists() {
-		params.Set("photo", photo.FileID)
+		params["photo"] = photo.FileID
 		responseJSON, err = sendCommand("sendPhoto", b.Token, params)
 	} else {
 		responseJSON, err = sendFile("sendPhoto", b.Token, "photo",
@@ -176,22 +194,18 @@ func (b *Bot) SendPhoto(recipient Recipient, photo *Photo, options *SendOptions)
 		return err
 	}
 
-	var responseRecieved struct {
-		Ok          bool
-		Result      Message
-		Description string
-	}
+	var responseReceived ResponseReceivedResult
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
-	thumbnails := &responseRecieved.Result.Photo
+	thumbnails := &responseReceived.Result.Photo
 	filename := photo.filename
 	photo.File = (*thumbnails)[len(*thumbnails)-1].File
 	photo.filename = filename
@@ -206,18 +220,19 @@ func (b *Bot) SendPhoto(recipient Recipient, photo *Photo, options *SendOptions)
 // again, won't issue a new upload, but would make a use
 // of existing file on Telegram servers.
 func (b *Bot) SendAudio(recipient Recipient, audio *Audio, options *SendOptions) error {
-	params := url.Values{}
-	params.Set("chat_id", recipient.Destination())
+	params := map[string]string{
+		"chat_id": recipient.Destination(),
+	}
 
 	if options != nil {
-		embedSendOptions(&params, options)
+		embedSendOptions(params, options)
 	}
 
 	var responseJSON []byte
 	var err error
 
 	if audio.Exists() {
-		params.Set("audio", audio.FileID)
+		params["audio"] = audio.FileID
 		responseJSON, err = sendCommand("sendAudio", b.Token, params)
 	} else {
 		responseJSON, err = sendFile("sendAudio", b.Token, "audio",
@@ -228,23 +243,19 @@ func (b *Bot) SendAudio(recipient Recipient, audio *Audio, options *SendOptions)
 		return err
 	}
 
-	var responseRecieved struct {
-		Ok          bool
-		Result      Message
-		Description string
-	}
+	var responseReceived ResponseReceivedResult
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	filename := audio.filename
-	*audio = responseRecieved.Result.Audio
+	*audio = responseReceived.Result.Audio
 	audio.filename = filename
 
 	return nil
@@ -257,18 +268,19 @@ func (b *Bot) SendAudio(recipient Recipient, audio *Audio, options *SendOptions)
 // again, won't issue a new upload, but would make a use
 // of existing file on Telegram servers.
 func (b *Bot) SendDocument(recipient Recipient, doc *Document, options *SendOptions) error {
-	params := url.Values{}
-	params.Set("chat_id", recipient.Destination())
+	params := map[string]string{
+		"chat_id": recipient.Destination(),
+	}
 
 	if options != nil {
-		embedSendOptions(&params, options)
+		embedSendOptions(params, options)
 	}
 
 	var responseJSON []byte
 	var err error
 
 	if doc.Exists() {
-		params.Set("document", doc.FileID)
+		params["document"] = doc.FileID
 		responseJSON, err = sendCommand("sendDocument", b.Token, params)
 	} else {
 		responseJSON, err = sendFile("sendDocument", b.Token, "document",
@@ -279,23 +291,19 @@ func (b *Bot) SendDocument(recipient Recipient, doc *Document, options *SendOpti
 		return err
 	}
 
-	var responseRecieved struct {
-		Ok          bool
-		Result      Message
-		Description string
-	}
+	var responseReceived ResponseReceivedResult
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	filename := doc.filename
-	*doc = responseRecieved.Result.Document
+	*doc = responseReceived.Result.Document
 	doc.filename = filename
 
 	return nil
@@ -308,18 +316,19 @@ func (b *Bot) SendDocument(recipient Recipient, doc *Document, options *SendOpti
 // again, won't issue a new upload, but would make a use
 // of existing file on Telegram servers.
 func (b *Bot) SendSticker(recipient Recipient, sticker *Sticker, options *SendOptions) error {
-	params := url.Values{}
-	params.Set("chat_id", recipient.Destination())
+	params := map[string]string{
+		"chat_id": recipient.Destination(),
+	}
 
 	if options != nil {
-		embedSendOptions(&params, options)
+		embedSendOptions(params, options)
 	}
 
 	var responseJSON []byte
 	var err error
 
 	if sticker.Exists() {
-		params.Set("sticker", sticker.FileID)
+		params["sticker"] = sticker.FileID
 		responseJSON, err = sendCommand("sendSticker", b.Token, params)
 	} else {
 		responseJSON, err = sendFile("sendSticker", b.Token, "sticker",
@@ -330,23 +339,19 @@ func (b *Bot) SendSticker(recipient Recipient, sticker *Sticker, options *SendOp
 		return err
 	}
 
-	var responseRecieved struct {
-		Ok          bool
-		Result      Message
-		Description string
-	}
+	var responseReceived ResponseReceivedResult
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	filename := sticker.filename
-	*sticker = responseRecieved.Result.Sticker
+	*sticker = responseReceived.Result.Sticker
 	sticker.filename = filename
 
 	return nil
@@ -359,18 +364,19 @@ func (b *Bot) SendSticker(recipient Recipient, sticker *Sticker, options *SendOp
 // again, won't issue a new upload, but would make a use
 // of existing file on Telegram servers.
 func (b *Bot) SendVideo(recipient Recipient, video *Video, options *SendOptions) error {
-	params := url.Values{}
-	params.Set("chat_id", recipient.Destination())
+	params := map[string]string{
+		"chat_id": recipient.Destination(),
+	}
 
 	if options != nil {
-		embedSendOptions(&params, options)
+		embedSendOptions(params, options)
 	}
 
 	var responseJSON []byte
 	var err error
 
 	if video.Exists() {
-		params.Set("video", video.FileID)
+		params["video"] = video.FileID
 		responseJSON, err = sendCommand("sendVideo", b.Token, params)
 	} else {
 		responseJSON, err = sendFile("sendVideo", b.Token, "video",
@@ -381,23 +387,19 @@ func (b *Bot) SendVideo(recipient Recipient, video *Video, options *SendOptions)
 		return err
 	}
 
-	var responseRecieved struct {
-		Ok          bool
-		Result      Message
-		Description string
-	}
+	var responseReceived ResponseReceivedResult
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	filename := video.filename
-	*video = responseRecieved.Result.Video
+	*video = responseReceived.Result.Video
 	video.filename = filename
 
 	return nil
@@ -410,13 +412,14 @@ func (b *Bot) SendVideo(recipient Recipient, video *Video, options *SendOptions)
 // again, won't issue a new upload, but would make a use
 // of existing file on Telegram servers.
 func (b *Bot) SendLocation(recipient Recipient, geo *Location, options *SendOptions) error {
-	params := url.Values{}
-	params.Set("chat_id", recipient.Destination())
-	params.Set("latitude", fmt.Sprintf("%f", geo.Latitude))
-	params.Set("longitude", fmt.Sprintf("%f", geo.Longitude))
+	params := map[string]string{
+		"chat_id":   recipient.Destination(),
+		"latitude":  fmt.Sprintf("%f", geo.Latitude),
+		"longitude": fmt.Sprintf("%f", geo.Longitude),
+	}
 
 	if options != nil {
-		embedSendOptions(&params, options)
+		embedSendOptions(params, options)
 	}
 
 	responseJSON, err := sendCommand("sendLocation", b.Token, params)
@@ -424,19 +427,50 @@ func (b *Bot) SendLocation(recipient Recipient, geo *Location, options *SendOpti
 		return err
 	}
 
-	var responseRecieved struct {
-		Ok          bool
-		Result      Message
-		Description string
-	}
+	var responseReceived ResponseReceivedResult
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
+	}
+
+	return nil
+}
+
+// SendVenue sends a venue object to recipient.
+func (b *Bot) SendVenue(recipient Recipient, venue *Venue, options *SendOptions) error {
+	params := map[string]string{
+		"chat_id":   recipient.Destination(),
+		"latitude":  fmt.Sprintf("%f", venue.Location.Latitude),
+		"longitude": fmt.Sprintf("%f", venue.Location.Longitude),
+		"title":     venue.Title,
+		"address":   venue.Address}
+	if venue.Foursquare_id != "" {
+		params["foursquare_id"] = venue.Foursquare_id
+	}
+
+	if options != nil {
+		embedSendOptions(params, options)
+	}
+
+	responseJSON, err := sendCommand("sendVenue", b.Token, params)
+	if err != nil {
+		return err
+	}
+
+	var responseReceived ResponseReceivedResult
+
+	err = json.Unmarshal(responseJSON, &responseReceived)
+	if err != nil {
+		return err
+	}
+
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	return nil
@@ -452,39 +486,39 @@ func (b *Bot) SendLocation(recipient Recipient, geo *Location, options *SendOpti
 // Currently, Telegram supports only a narrow range of possible
 // actions, these are aligned as constants of this package.
 func (b *Bot) SendChatAction(recipient Recipient, action string) error {
-	params := url.Values{}
-	params.Set("chat_id", recipient.Destination())
-	params.Set("action", action)
+	params := map[string]string{
+		"chat_id": recipient.Destination(),
+		"action":  action,
+	}
 
 	responseJSON, err := sendCommand("sendChatAction", b.Token, params)
 	if err != nil {
 		return err
 	}
 
-	var responseRecieved struct {
-		Ok          bool
-		Description string
-	}
+	var responseReceived ResponseReceivedOK
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	return nil
 }
 
 // Respond publishes a set of responses for an inline query.
+// This function is deprecated in favor of AnswerInlineQuery.
 func (b *Bot) Respond(query Query, results []Result) error {
-	params := url.Values{}
-	params.Set("inline_query_id", query.ID)
+	params := map[string]string{
+		"inline_query_id": query.ID,
+	}
 
 	if res, err := json.Marshal(results); err == nil {
-		params.Set("results", string(res))
+		params["results"] = string(res)
 	} else {
 		return err
 	}
@@ -494,22 +528,70 @@ func (b *Bot) Respond(query Query, results []Result) error {
 		return err
 	}
 
-	var responseRecieved struct {
-		Ok          bool
-		Description string
-	}
+	var responseReceived ResponseReceivedOK
 
-	err = json.Unmarshal(responseJSON, &responseRecieved)
+	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
 		return err
 	}
 
-	if !responseRecieved.Ok {
-		return fmt.Errorf("telebot: %s", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
 	}
 
 	return nil
 }
+
+// AnswerInlineQuery sends a response for a given inline query. A query can
+// only be responded to once, subsequent attempts to respond to the same query
+// will result in an error.
+func (b *Bot) AnswerInlineQuery(query *Query, response *QueryResponse) error {
+	response.QueryID = query.ID
+
+	responseJSON, err := sendCommand("answerInlineQuery", b.Token, response)
+	if err != nil {
+		return err
+	}
+
+	var responseReceived ResponseReceivedOK
+
+	err = json.Unmarshal(responseJSON, &responseReceived)
+	if err != nil {
+		return err
+	}
+
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
+	}
+
+	return nil
+}
+
+// AnswerCallbackQuery sends a response for a given callback query. A callback can
+// only be responded to once, subsequent attempts to respond to the same callback
+// will result in an error.
+func (b *Bot) AnswerCallbackQuery(callback *Callback, response *CallbackResponse) error {
+	response.CallbackID = callback.ID
+
+	responseJSON, err := sendCommand("answerCallbackQuery", b.Token, response)
+	if err != nil {
+		return err
+	}
+
+	var responseReceived ResponseReceivedOK
+
+	err = json.Unmarshal(responseJSON, &responseReceived)
+	if err != nil {
+		return err
+	}
+
+	if !responseReceived.Ok {
+		return fmt.Errorf("telebot: %s", responseReceived.Description)
+	}
+
+	return nil
+}
+
 
 // Handle registers a handler for a message which text matches the provided regular expression
 func (b *Bot) Handle(command string, handler Handler) {
@@ -523,13 +605,13 @@ func (b *Bot) Serve() {
 	b.Listen(messages, 1*time.Second)
 
 	for message := range messages {
-		if handler, args := b.route(&message); handler != nil {
+		if handler, args := b.Route(&message); handler != nil {
 			handler(Context{Message: &message, Args: args})
 		}
 	}
 }
 
-func (b *Bot) route(message *Message) (Handler, map[string]string) {
+func (b *Bot) Route(message *Message) (Handler, map[string]string) {
 	for reg, handler := range b.handlers {
 
 		if matches := reg.FindStringSubmatch(message.Text); len(matches) > 0 {

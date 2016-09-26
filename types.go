@@ -54,11 +54,12 @@ func (c Chat) IsGroupChat() bool {
 
 // Update object represents an incoming update.
 type Update struct {
-	ID      int     `json:"update_id"`
-	Payload Message `json:"message"`
+	ID      int      `json:"update_id"`
+	Payload *Message `json:"message"`
 
 	// optional
-	Query *Query `json:"inline_query"`
+	Callback *Callback `json:"callback_query"`
+	Query    *Query    `json:"inline_query"`
 }
 
 // Thumbnail object represents an image/sticker of a particular size.
@@ -129,6 +130,21 @@ type Video struct {
 	Preview Thumbnail `json:"thumb"`
 }
 
+// KeyboardButton represents a button displayed on in a message.
+type KeyboardButton struct {
+	Text        string `json:"text"`
+	URL         string `json:"url,omitempty"`
+	Data        string `json:"callback_data,omitempty"`
+	InlineQuery string `json:"switch_inline_query,omitempty"`
+}
+
+// InlineKeyboardMarkup represents an inline keyboard that appears right next
+// to the message it belongs to.
+type InlineKeyboardMarkup struct {
+	// Array of button rows, each represented by an Array of KeyboardButton objects.
+	InlineKeyboard [][]KeyboardButton `json:"inline_keyboard,omitempty"`
+}
+
 // Contact object represents a contact to Telegram user
 type Contact struct {
 	UserID      int    `json:"user_id"`
@@ -139,8 +155,73 @@ type Contact struct {
 
 // Location object represents geographic position.
 type Location struct {
-	Longitude float32 `json:"longitude"`
 	Latitude  float32 `json:"latitude"`
+	Longitude float32 `json:"longitude"`
+}
+
+// Callback object represents a query from a callback button in an
+// inline keyboard.
+type Callback struct {
+	ID string `json:"id"`
+
+	// For message sent to channels, Sender may be empty
+	Sender User `json:"from"`
+
+	// Message will be set if the button that originated the query
+	// was attached to a message sent by a bot.
+	Message Message `json:"message"`
+
+	// MessageID will be set if the button was attached to a message
+	// sent via the bot in inline mode.
+	MessageID string `json:"inline_message_id"`
+	Data      string `json:"data"`
+}
+
+// CallbackResponse builds a response to an Callback query.
+// See also: https://core.telegram.org/bots/api#answerCallbackQuery
+type CallbackResponse struct {
+	// The ID of the callback to which this is a response.
+	// It is not necessary to specify this field manually.
+	CallbackID string `json:"callback_query_id"`
+
+	// Text of the notification. If not specified, nothing will be shown to the user.
+	Text string `json:"text,omitempty"`
+
+	// (Optional) If true, an alert will be shown by the client instead
+	// of a notification at the top of the chat screen. Defaults to false.
+	ShowAlert bool `json:"show_alert,omitempty"`
+}
+
+// Venue object represents a venue location with name, address and optional foursquare id.
+type Venue struct {
+	Location      Location `json:"location"`
+	Title         string   `json:"title"`
+	Address       string   `json:"address"`
+	Foursquare_id string   `json:"foursquare_id",omitempty`
+}
+
+// MessageEntity
+// This object represents one special entity in a text message.
+// For example, hashtags, usernames, URLs, etc
+type MessageEntity struct {
+
+	// type Type of the entity. Can be mention (@username), hashtag,
+	// bot_command, url, email, bold (bold text), italic (italic text),
+	// code (monowidth string), pre (monowidth block), text_link (for clickable text URLs),
+	// text_mention (for users without usernames)
+	Type string `json:"type"`
+
+	// offset Offset in UTF-16 code units to the start of the entity
+	Offset int `json:"offset"`
+
+	//length Length of the entity in UTF-16 code units
+	Length int `json:"length"`
+
+	//url	Optional. For “text_link” only, url that will be opened after user taps on the text
+	Url string `json:"url",omitempty`
+
+	//user	Optional. For “text_mention” only, the mentioned user
+	User User `json:"user",omitempty`
 }
 
 // Context is passed to message handlers
