@@ -20,11 +20,13 @@ type Bot struct {
 	handlers       map[*regexp.Regexp]Handler
 }
 
+// Simple ack response
 type ResponseReceivedOK  struct {
 	Ok          bool
 	Description string
 }
 
+// Response with a payload
 type ResponseReceivedResult struct {
 	Ok          bool
 	Result      Message
