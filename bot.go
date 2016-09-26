@@ -86,12 +86,6 @@ func (b *Bot) poll(
 				}
 
 				messages <- *update.Payload
-				// Insert handling of routing here, instead of Serve
-				for message := range messages {
-					if handler, args := b.route(&message); handler != nil {
-						handler(Context{Message: &message, Args: args})
-					}
-				}
 			} else if update.Query != nil /* if query */ {
 				if queries == nil {
 					continue
@@ -107,6 +101,13 @@ func (b *Bot) poll(
 			}
 
 			latestUpdate = update.ID
+		}
+	}
+
+	// Insert handling of routing here, instead of Serve
+	for message := range messages {
+		if handler, args := b.route(&message); handler != nil {
+			handler(Context{Message: &message, Args: args})
 		}
 	}
 
