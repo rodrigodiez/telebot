@@ -623,6 +623,7 @@ func (b *Bot) AnswerCallbackQuery(callback *Callback, response *CallbackResponse
 	}
 
 	return nil
+}
 
 // Handle registers a handler for a message which text matches the provided regular expression
 func (b *Bot) Handle(command string, handler Handler) {
