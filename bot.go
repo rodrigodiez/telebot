@@ -25,6 +25,12 @@ type ResponseReceivedOK  struct {
 	Description string
 }
 
+type ResponseReceivedResult struct {
+	Ok          bool
+	Result      Message
+	Description string
+}
+
 // NewBot does try to build a Bot with token `token`, which
 // is a secret API key assigned to particular bot.
 func NewBot(token string) (*Bot, error) {
@@ -141,10 +147,7 @@ func (b *Bot) ForwardMessage(recipient Recipient, message Message) error {
 		return err
 	}
 
-	var responseReceived struct {
-		Ok          bool
-		Description string
-	}
+	var responseReceived ResponseReceivedOK
 
 	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
@@ -189,11 +192,7 @@ func (b *Bot) SendPhoto(recipient Recipient, photo *Photo, options *SendOptions)
 		return err
 	}
 
-	var responseReceived struct {
-		Ok          bool
-		Result      Message
-		Description string
-	}
+	var responseReceived ResponseReceivedResult
 
 	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
@@ -242,11 +241,7 @@ func (b *Bot) SendAudio(recipient Recipient, audio *Audio, options *SendOptions)
 		return err
 	}
 
-	var responseReceived struct {
-		Ok          bool
-		Result      Message
-		Description string
-	}
+	var responseReceived ResponseReceivedResult
 
 	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
@@ -294,11 +289,7 @@ func (b *Bot) SendDocument(recipient Recipient, doc *Document, options *SendOpti
 		return err
 	}
 
-	var responseReceived struct {
-		Ok          bool
-		Result      Message
-		Description string
-	}
+	var responseReceived ResponseReceivedResult
 
 	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
@@ -346,11 +337,7 @@ func (b *Bot) SendSticker(recipient Recipient, sticker *Sticker, options *SendOp
 		return err
 	}
 
-	var responseReceived struct {
-		Ok          bool
-		Result      Message
-		Description string
-	}
+	var responseReceived ResponseReceivedResult
 
 	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
@@ -398,11 +385,7 @@ func (b *Bot) SendVideo(recipient Recipient, video *Video, options *SendOptions)
 		return err
 	}
 
-	var responseReceived struct {
-		Ok          bool
-		Result      Message
-		Description string
-	}
+	var responseReceived ResponseReceivedResult
 
 	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
@@ -442,11 +425,7 @@ func (b *Bot) SendLocation(recipient Recipient, geo *Location, options *SendOpti
 		return err
 	}
 
-	var responseReceived struct {
-		Ok          bool
-		Result      Message
-		Description string
-	}
+	var responseReceived ResponseReceivedResult
 
 	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
@@ -481,11 +460,7 @@ func (b *Bot) SendVenue(recipient Recipient, venue *Venue, options *SendOptions)
 		return err
 	}
 
-	var responseReceived struct {
-		Ok          bool
-		Result      Message
-		Description string
-	}
+	var responseReceived ResponseReceivedResult
 
 	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
@@ -519,10 +494,7 @@ func (b *Bot) SendChatAction(recipient Recipient, action string) error {
 		return err
 	}
 
-	var responseReceived struct {
-		Ok          bool
-		Description string
-	}
+	var responseReceived ResponseReceivedOK
 
 	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
@@ -554,10 +526,7 @@ func (b *Bot) Respond(query Query, results []Result) error {
 		return err
 	}
 
-	var responseReceived struct {
-		Ok          bool
-		Description string
-	}
+	var responseReceived ResponseReceivedOK
 
 	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
@@ -582,10 +551,7 @@ func (b *Bot) AnswerInlineQuery(query *Query, response *QueryResponse) error {
 		return err
 	}
 
-	var responseReceived struct {
-		Ok          bool
-		Description string
-	}
+	var responseReceived ResponseReceivedOK
 
 	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
