@@ -51,8 +51,22 @@ func main() {
         bot.SendMessage(context.Message.Chat, fmt.Sprintf("Hello %s, %s", context.Args["last_name"], context.Args["name"]), nil)
     })
 
-    bot.Serve()
+	messages := make(chan telebot.Message)
+    bot.Listen(messages, 1*time.Second)
+
+    for message := range messages {
+	    if handler, args := bot.Route(&message); handler != nil {
+		    handler(telebot.Context{Message: &message, Args: args})
+	    }
+	    log.WithFields(log.Fields {
+		    "type": "message",
+		    "username": message.Sender.Username,
+		    "text": message.Text }).Info("Message received")
+    }
+
 }
+
+
 ```
 
 ## Inline mode
