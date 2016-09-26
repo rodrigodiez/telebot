@@ -20,6 +20,11 @@ type Bot struct {
 	handlers       map[*regexp.Regexp]Handler
 }
 
+type ResponseReceivedOK  struct {
+	Ok          bool
+	Description string
+}
+
 // NewBot does try to build a Bot with token `token`, which
 // is a secret API key assigned to particular bot.
 func NewBot(token string) (*Bot, error) {
@@ -608,10 +613,7 @@ func (b *Bot) AnswerCallbackQuery(callback *Callback, response *CallbackResponse
 		return err
 	}
 
-	var responseReceived struct {
-		Ok          bool
-		Description string
-	}
+	var responseReceived ResponseReceivedOK
 
 	err = json.Unmarshal(responseJSON, &responseReceived)
 	if err != nil {
